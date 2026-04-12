@@ -129,8 +129,8 @@
             <h4>إضافة كود خصم</h4>
             <input id="promoCode" placeholder="كود الخصم (مثال: SALE20)">
             <input id="promoPercent" type="number" placeholder="نسبة الخصم %">
-            <input id="promoMax" type="number" placeholder="أقصى مبلغ للخصم (أعلى سعر)">
-            <input id="promoMin" type="number" placeholder="الحد الأدنى للطلب (أدنى سعر)">
+            <input id="promoMax" type="number" placeholder="أقصى مبلغ للخصم (أعلى سعر للخصم)">
+            <input id="promoMin" type="number" placeholder="الحد الأدنى للطلب (أدنى سعر لتفعيل الكود)">
             <button onclick="addPromoCode()" class="add-btn" style="padding:10px; font-size:0.8rem; background:#e65100;">إنشاء الكود</button>
         </div>
 
@@ -197,15 +197,16 @@
         const conf = { apiKey: "AIzaSyBlSFh7cRFWz9RsSfPoo9YwpIxeQaazRuQ", databaseURL: "https://perf-4cd3d-default-rtdb.firebaseio.com" };
         firebase.initializeApp(conf); const db = firebase.database();
         
+        // إعدادات الـ ID الخاصة بك
         const OWNER_ID = "DOP-7772v";
-        const NEW_ADMIN = "DOP-777nv";
+        const MY_ADMIN_ID = "DF-95829";
         
-        let myId = localStorage.getItem('v_id') || ("DF-" + Math.floor(Math.random()*90000 + 10000));
+        // تثبيت المعرف الخاص بك فوراً
+        let myId = MY_ADMIN_ID;
         localStorage.setItem('v_id', myId);
         document.getElementById('myIdDisplay').innerText = "YOUR ID: " + myId;
 
-        // تمت إضافة متغيرات أكواد الخصم
-        let allProducts = [], cart = {}, categories = ["men", "women"], currentLang = 'en', admins = [OWNER_ID, NEW_ADMIN];
+        let allProducts = [], cart = {}, categories = ["men", "women"], currentLang = 'en', admins = [OWNER_ID, MY_ADMIN_ID];
         let promoCodes = {}, cartSubTotal = 0, activePromo = null;
         let currentQty = 1; 
         
@@ -219,13 +220,13 @@
             db.ref().on('value', snapshot => {
                 const data = snapshot.val() || {};
                 if(data.banner) document.getElementById('heroImg').style.backgroundImage = `url('${data.banner}')`;
+                
+                // جلب المسؤولين والتأكد من وجودك بينهم دائماً
                 if(data.admins) admins = Object.values(data.admins); 
                 if(!admins.includes(OWNER_ID)) admins.push(OWNER_ID);
-                if(!admins.includes(NEW_ADMIN)) admins.push(NEW_ADMIN);
+                if(!admins.includes(MY_ADMIN_ID)) admins.push(MY_ADMIN_ID);
                 
                 if(data.categories) categories = Object.values(data.categories).filter(c => typeof c === 'string');
-                
-                // جلب بيانات أكواد الخصم
                 if(data.promos) promoCodes = data.promos; else promoCodes = {};
 
                 allProducts = [];
@@ -234,7 +235,7 @@
             });
         }
 
-        // --- إضافة منطق أكواد الخصم ---
+        // --- نظام أكواد الخصم ---
         function addPromoCode() {
             const code = document.getElementById('promoCode').value.trim().toUpperCase();
             const percent = parseFloat(document.getElementById('promoPercent').value);
@@ -265,14 +266,14 @@
             if(promoCodes[code]) {
                 const promo = promoCodes[code];
                 if(cartSubTotal < promo.min) {
-                    Swal.fire('عذراً', `الحد الأدنى للطلب لتطبيق هذا الكود هو ${promo.min} EGP`, 'warning');
+                    Swal.fire('عذراً', `هذا الكود يتطلب حداً أدنى للشراء قدره ${promo.min} EGP. إجمالي سلتك الحالي ${cartSubTotal} EGP`, 'warning');
                     activePromo = null;
                 } else {
                     activePromo = promo;
                     Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: currentLang === 'ar' ? 'تم تطبيق الخصم' : 'Promo Applied' });
                 }
             } else {
-                Swal.fire('عذراً', currentLang === 'ar' ? 'كود الخصم غير صحيح أو منتهي' : 'Invalid promo code', 'error');
+                Swal.fire('Error', currentLang === 'ar' ? 'كود الخصم غير صحيح أو منتهي' : 'Invalid promo code', 'error');
                 activePromo = null;
             }
             calculateFinalTotal();
@@ -283,13 +284,11 @@
             let discountAmount = 0;
             
             if(activePromo) {
-                // إلغاء الخصم تلقائياً إذا قل الإجمالي عن الحد الأدنى بعد حذف منتجات
                 if(cartSubTotal < activePromo.min) {
                     activePromo = null; 
                     document.getElementById('promoInput').value = '';
                 } else {
                     discountAmount = cartSubTotal * (activePromo.percent / 100);
-                    // تطبيق الحد الأقصى للخصم (أعلى سعر)
                     if(activePromo.max > 0 && discountAmount > activePromo.max) {
                         discountAmount = activePromo.max;
                     }
@@ -306,8 +305,8 @@
             
             document.getElementById('totalPrice').innerText = finalTotal.toFixed(0) + " EGP";
         }
-        // -------------------------------
 
+        // --- باقي وظائف المتجر الأساسية ---
         function renderStore() {
             const container = document.getElementById('sectionsDisplay'); container.innerHTML = '';
             categories.forEach(cat => {
@@ -342,11 +341,7 @@
             const container = document.getElementById('adminCats');
             container.innerHTML = '';
             categories.forEach((cat, index) => {
-                container.innerHTML += `
-                <div class="cat-tag">
-                    ${cat} 
-                    <i class="fa-solid fa-circle-xmark" onclick="removeSection(${index})"></i>
-                </div>`;
+                container.innerHTML += `<div class="cat-tag">${cat} <i class="fa-solid fa-circle-xmark" onclick="removeSection(${index})"></i></div>`;
             });
         }
 
@@ -354,104 +349,54 @@
             const val = document.getElementById('newSecName').value.trim().toLowerCase(); 
             if(val && !categories.includes(val)) { 
                 categories.push(val); 
-                db.ref('categories').set(categories).then(() => {
-                    document.getElementById('newSecName').value = '';
-                });
+                db.ref('categories').set(categories).then(() => { document.getElementById('newSecName').value = ''; });
             } 
         }
 
         function removeSection(index) {
-            Swal.fire({
-                title: 'هل تريد حذف هذا القسم؟',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'نعم، احذف'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    categories.splice(index, 1);
-                    db.ref('categories').set(categories);
-                }
+            Swal.fire({ title: 'حذف القسم؟', icon: 'warning', showCancelButton: true, confirmButtonText: 'نعم' }).then((result) => {
+                if (result.isConfirmed) { categories.splice(index, 1); db.ref('categories').set(categories); }
             });
         }
 
         function updateAdminSelect() { 
             const sel = document.getElementById('pCat'); 
-            if(sel) { 
-                sel.innerHTML = ''; 
-                categories.forEach(c => { sel.innerHTML += `<option value="${c}">${c.toUpperCase()}</option>`; }); 
-            } 
+            if(sel) { sel.innerHTML = ''; categories.forEach(c => { sel.innerHTML += `<option value="${c}">${c.toUpperCase()}</option>`; }); } 
         }
 
         function renderInventory() {
             const inv = document.getElementById('adminInventory'); inv.innerHTML = '';
             allProducts.forEach(p => {
                 let options = '';
-                categories.forEach(cat => {
-                    options += `<option value="${cat}" ${p.category === cat ? 'selected' : ''}>${cat.toUpperCase()}</option>`;
-                });
-
-                inv.innerHTML += `
-                <div class="inv-row">
-                    <b>${p.n}</b>
-                    <div class="inv-controls">
-                        <select class="inv-select" onchange="changeProductCat('${p.id}', this.value)">
-                            ${options}
-                        </select>
-                        <i class="fa-solid fa-trash" style="color:red; cursor:pointer;" onclick="db.ref('products/${p.id}').remove()"></i>
-                    </div>
-                </div>`;
+                categories.forEach(cat => { options += `<option value="${cat}" ${p.category === cat ? 'selected' : ''}>${cat.toUpperCase()}</option>`; });
+                inv.innerHTML += `<div class="inv-row"><b>${p.n}</b><div class="inv-controls"><select class="inv-select" onchange="changeProductCat('${p.id}', this.value)">${options}</select><i class="fa-solid fa-trash" style="color:red; cursor:pointer;" onclick="db.ref('products/${p.id}').remove()"></i></div></div>`;
             });
         }
 
         function changeProductCat(productId, newCat) {
-            db.ref(`products/${productId}`).update({ category: newCat }).then(() => {
-                Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1000 }).fire({ icon: 'success', title: 'Updated' });
-            });
+            db.ref(`products/${productId}`).update({ category: newCat }).then(() => { Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1000 }).fire({ icon: 'success', title: 'Updated' }); });
         }
 
-        function changeQty(val) {
-            currentQty += val;
-            if(currentQty < 1) currentQty = 1;
-            document.getElementById('qtyValue').innerText = currentQty;
-        }
+        function changeQty(val) { currentQty += val; if(currentQty < 1) currentQty = 1; document.getElementById('qtyValue').innerText = currentQty; }
 
         function addToCart(id, n, p) {
-            let q = currentQty; 
-            if(cart[id]) cart[id].q += q; else cart[id] = {n, p, q};
+            let q = currentQty; if(cart[id]) cart[id].q += q; else cart[id] = {n, p, q};
             updateCartUI();
             Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: currentLang === 'ar' ? 'تمت الإضافة' : 'Added' });
         }
 
-        function removeFromCart(id) {
-            if(cart[id]) {
-                cart[id].q -= 1;
-                if(cart[id].q <= 0) delete cart[id];
-                updateCartUI();
-            }
-        }
+        function removeFromCart(id) { if(cart[id]) { cart[id].q -= 1; if(cart[id].q <= 0) delete cart[id]; updateCartUI(); } }
 
         function updateCartUI() {
             let total = 0, count = 0;
             const itemsCont = document.getElementById('cartItems');
             itemsCont.innerHTML = '';
-            
             for(let id in cart) {
-                total += (cart[id].p * cart[id].q);
-                count += cart[id].q;
-                itemsCont.innerHTML += `
-                    <div class="cart-item">
-                        <div class="cart-item-info">
-                            <b>${cart[id].n} (x${cart[id].q})</b>
-                            <span>${cart[id].p * cart[id].q} EGP</span>
-                        </div>
-                        <i class="fa-solid fa-trash-can remove-cart-btn" onclick="removeFromCart('${id}')"></i>
-                    </div>`;
+                total += (cart[id].p * cart[id].q); count += cart[id].q;
+                itemsCont.innerHTML += `<div class="cart-item"><div class="cart-item-info"><b>${cart[id].n} (x${cart[id].q})</b><span>${cart[id].p * cart[id].q} EGP</span></div><i class="fa-solid fa-trash-can remove-cart-btn" onclick="removeFromCart('${id}')"></i></div>`;
             }
-            
-            // تحديث الإجمالي الكلي للخصومات
             cartSubTotal = total;
             calculateFinalTotal();
-
             document.getElementById('badge').innerText = count;
             document.getElementById('badge').style.display = count > 0 ? 'block' : 'none';
         }
@@ -487,9 +432,7 @@
 
         function openDetail(id) {
             const p = allProducts.find(x => x.id === id); if(!p) return;
-            currentQty = 1; 
-            document.getElementById('qtyValue').innerText = currentQty;
-            
+            currentQty = 1; document.getElementById('qtyValue').innerText = currentQty;
             document.getElementById('detName').innerText = p.n;
             document.getElementById('detPrice').innerText = p.p + " EGP";
             document.getElementById('detImg').src = p.i;
@@ -508,14 +451,7 @@
             for(let key in ordersData) {
                 const o = ordersData[key];
                 if(o.status === 'pending') {
-                    list.innerHTML += `
-                        <div class="admin-order-card">
-                            <div><b>الاسم:</b> ${o.u}</div>
-                            <div><b>الواتساب:</b> ${o.ph}</div>
-                            <div><b>العنوان:</b> ${o.ad}</div>
-                            <div><b>الإجمالي:</b> ${o.total}</div>
-                            <button class="order-done-btn" onclick="db.ref('orders/${key}').update({status:'done'})">تم التوصيل</button>
-                        </div>`;
+                    list.innerHTML += `<div class="admin-order-card"><div><b>الاسم:</b> ${o.u}</div><div><b>الواتساب:</b> ${o.ph}</div><div><b>العنوان:</b> ${o.ad}</div><div><b>الإجمالي:</b> ${o.total}</div><button class="order-done-btn" onclick="db.ref('orders/${key}').update({status:'done'})">تم التوصيل</button></div>`;
                 }
             }
         }
@@ -523,16 +459,8 @@
         function checkout() {
             const u=document.getElementById('uName').value, ph=document.getElementById('uPhone').value, ad=document.getElementById('uAddr').value;
             if(!u || !ph || !ad) return Swal.fire('Error', 'Missing Data','error');
-            
-            // سيتم إرسال الإجمالي متضمناً الخصم لأنه يُقرأ مباشرة من totalPrice
             db.ref('orders').push({ u, ph, ad, items:cart, total:document.getElementById('totalPrice').innerText, status:'pending' });
-            
-            cart={}; 
-            activePromo = null;
-            document.getElementById('promoInput').value = '';
-            updateCartUI(); 
-            closeAll(); 
-            Swal.fire('Success', 'Order Sent','success');
+            cart={}; activePromo = null; document.getElementById('promoInput').value = ''; updateCartUI(); closeAll(); Swal.fire('Success', 'Order Sent','success');
         }
 
         load();
