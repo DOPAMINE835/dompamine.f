@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" id="htmlTag">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DOPAMINE.F | ROYAL</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Montserrat:wght@300;500;700&family=Cairo:wght@300;600&display=swap');
+        :root { --accent: #b8924a; --bg: #ffffff; --text: #1a1a1a; }
+        * { box-sizing: border-box; transition: 0.3s ease; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Montserrat', sans-serif; overflow-x: hidden; padding-bottom: 40px; }
+        h1, h2, h3, .section-title, .logo { font-family: 'Playfair Display', serif; }
+        html[dir="rtl"] body { font-family: 'Cairo', sans-serif; }
+
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 6%; background: #fff; position: sticky; top: 0; z-index: 2000; border-bottom: 1px solid #f8f8f8; }
+        .logo { font-size: 1.4rem; font-weight: 700; letter-spacing: 2px; }
+        .nav-icons { display: flex; gap: 20px; align-items: center; }
+
+        .lang-btn { 
+            cursor: pointer; background: #f8f8f8; border: 1px solid #eee; padding: 6px 14px; 
+            font-size: 0.7rem; font-weight: 600; border-radius: 20px; display: flex; align-items: center; gap: 5px; color: #1a1a1a;
+        }
+
+        .hero { height: 55vh; position: relative; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden; }
+        #heroImg { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; background-size: cover; filter: grayscale(20%) brightness(0.5); }
+        .hero h1 { position: relative; color: #fff; font-size: 3rem; letter-spacing: 6px; margin: 0; text-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+
+        .section-title { padding: 60px 6% 30px; font-size: 1.8rem; text-align: center; text-transform: uppercase; letter-spacing: 4px; color: var(--text); font-weight: 700; }
+        .items-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; padding: 20px 6% 80px; }
+        .card { cursor: pointer; border-radius: 4px; overflow: hidden; }
+        .card img { width: 100%; aspect-ratio: 0.85; object-fit: cover; }
+        .card-info { padding: 15px 0; text-align: center; }
+        .card-info b { display: block; font-size: 0.85rem; font-weight: 500; text-transform: uppercase; margin-bottom: 5px; }
+        .card-info span, #detPrice, #totalPrice { color: var(--accent); font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 1.1rem; }
+
+        #bigModal { position: fixed; top: 100%; left: 0; width: 100%; height: 100%; background: #fff; z-index: 9999; transition: 0.4s; overflow-y: auto; }
+        .drawer { position: fixed; top: 0; width: 100%; max-width: 420px; height: 100%; background: #fff; z-index: 5000; padding: 40px 30px; transition: 0.5s; overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,0.05); }
+        #cartDrawer { right: -100%; } #cartDrawer.active { right: 0; }
+        #adminDrawer { left: -100%; } #adminDrawer.active { left: 0; }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 4000; display: none; backdrop-filter: blur(3px); }
+
+        input, select { width: 100%; padding: 16px; margin-bottom: 15px; border: 1px solid #eee; outline: none; font-family: inherit; font-size: 0.95rem; border-radius: 4px; }
+        .add-btn { width: 100%; padding: 20px; background: #1a1a1a; color: #fff; border: none; cursor: pointer; font-weight: 600; letter-spacing: 1px; font-size: 1rem; border-radius: 4px; }
+        
+        .inv-row { display: flex; flex-direction: column; gap: 8px; padding: 15px 0; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        .inv-controls { display: flex; gap: 10px; align-items: center; }
+        .inv-select { padding: 5px; margin: 0; font-size: 0.75rem; width: auto; flex: 1; }
+
+        .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #eee; }
+        .cart-item-info { flex: 1; }
+        .cart-item-info b { font-size: 0.85rem; display: block; }
+        .cart-item-info span { font-size: 0.75rem; color: var(--accent); }
+        .remove-cart-btn { color: #ff4d4d; cursor: pointer; padding: 5px; font-size: 0.9rem; }
+
+        .qty-box { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 20px; background: #f9f9f9; padding: 10px; border-radius: 4px; }
+        .qty-btn { cursor: pointer; width: 35px; height: 35px; border-radius: 50%; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; background: #fff; }
+        #qtyValue { font-weight: 700; font-size: 1.1rem; min-width: 30px; }
+
+        .admin-order-card { background: #fff; padding: 15px; margin-bottom: 10px; border: 2px solid #eee; border-radius: 8px; font-size: 1.1rem; line-height: 1.6; color: #000; }
+        .admin-order-card b { color: var(--accent); font-size: 1.2rem; }
+        .order-done-btn { background: #22c55e; color: #fff; border: none; padding: 10px 20px; margin-top: 10px; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
+        
+        .cat-tag { background: #eee; padding: 5px 10px; border-radius: 20px; font-size: 0.7rem; display: flex; align-items: center; gap: 8px; }
+        .cat-tag i { color: #ff4d4d; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div onclick="checkAdmin()"><i class="fa-solid fa-crown" style="font-size: 0.9rem; color: #000; cursor: pointer;"></i></div>
+        <div class="logo">DOPAMINE.F</div>
+        <div class="nav-icons">
+            <div class="lang-btn" onclick="toggleLanguage()">
+                <i class="fa-solid fa-globe"></i>
+                <span id="langText">العربية</span>
+            </div>
+            <div onclick="toggleCart()" style="position:relative; cursor: pointer;">
+                <i class="fa-solid fa-bag-shopping" style="font-size: 1.2rem;"></i>
+                <span id="badge" style="position:absolute; top:-5px; right:-5px; background:var(--accent); color:#fff; font-size:0.65rem; width:18px; height:18px; border-radius:50%; display:none; text-align:center; line-height:18px;">0</span>
+            </div>
+        </div>
+    </nav>
+
+    <div id="mainView">
+        <div class="hero">
+            <div id="heroImg"></div>
+            <h1 id="txt-hero">DOPAMINE</h1>
+        </div>
+        <div id="sectionsDisplay"></div>
+        <div id="myIdDisplay" style="text-align:center; font-size:0.6rem; color:#ccc; margin-top:20px;"></div>
+    </div>
+
+    <div id="bigModal">
+        <div style="padding: 15px 6%; display: flex; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 10; border-bottom: 1px solid #f8f8f8;">
+            <i class="fa-solid fa-chevron-left" onclick="closeDetail()" style="cursor: pointer;"></i>
+            <span style="font-size: 0.65rem; letter-spacing: 2px; font-weight: 600;">DETAILS</span>
+            <i class="fa-solid fa-xmark" onclick="closeDetail()" style="cursor: pointer;"></i>
+        </div>
+        <div style="padding: 10px 8% 40px; text-align: center;">
+            <img id="detImg" style="width: 100%; max-width: 400px; border-radius: 4px;">
+            <h2 id="detName" style="margin: 20px 0 5px;"></h2>
+            <div id="detPrice"></div>
+            <p id="detSim" style="color: #666; font-size: 0.9rem; line-height: 1.5; margin-bottom: 25px;"></p>
+            
+            <div class="qty-box">
+                <div class="qty-btn" onclick="changeQty(-1)"><i class="fa-solid fa-minus"></i></div>
+                <div id="qtyValue">1</div>
+                <div class="qty-btn" onclick="changeQty(1)"><i class="fa-solid fa-plus"></i></div>
+            </div>
+
+            <button id="addMainBtn" class="add-btn">ADD TO BAG</button>
+        </div>
+    </div>
+
+    <div id="adminDrawer" class="drawer">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+            <h2 style="margin:0;">MANAGER</h2>
+            <i class="fa-solid fa-xmark" onclick="closeAll()" style="cursor: pointer;"></i>
+        </div>
+        
+        <div style="background: #fff3e0; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ffcc80;">
+            <h4>إضافة كود خصم</h4>
+            <input id="promoCode" placeholder="كود الخصم (مثال: SALE20)">
+            <input id="promoPercent" type="number" placeholder="نسبة الخصم %">
+            <input id="promoMax" type="number" placeholder="أقصى مبلغ للخصم (أعلى سعر)">
+            <input id="promoMin" type="number" placeholder="الحد الأدنى للطلب (أدنى سعر)">
+            <button onclick="addPromoCode()" class="add-btn" style="padding:10px; font-size:0.8rem; background:#e65100;">إنشاء الكود</button>
+        </div>
+
+        <div style="background: #eef2ff; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #d1d5db;">
+            <h4>إدارة المسؤولين (Admins)</h4>
+            <input id="adminNewID" placeholder="أدخل ID المستخدم لجعله أدمن">
+            <button onclick="makeNewAdmin()" class="add-btn" style="padding:10px; font-size:0.8rem; background:#4f46e5;">تعيين كأدمن</button>
+        </div>
+
+        <div style="background: #f1f1f1; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h4>البانر</h4>
+            <input id="newBanner" placeholder="رابط صورة البانر">
+            <button onclick="updateBanner()" class="add-btn" style="padding:10px; font-size:0.8rem;">تحديث</button>
+        </div>
+
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h4>الأقسام</h4>
+            <div id="adminCats" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;"></div>
+            <input id="newSecName" placeholder="اسم القسم الجديد">
+            <button onclick="addNewSection()" class="add-btn" style="padding:10px; font-size:0.8rem;">إضافة قسم</button>
+        </div>
+
+        <div style="background: #fcfcfc; padding: 15px; border: 1px solid #eee; margin-bottom: 20px;">
+            <h4>إضافة منتج</h4>
+            <input id="pName" placeholder="الأسم"><input id="pSim" placeholder="التفاصيل"><input id="pPrice" placeholder="السعر"><input id="pImg" placeholder="الصورة">
+            <select id="pCat"></select>
+            <button onclick="addProduct()" class="add-btn" style="padding:10px;">نشر المنتج</button>
+        </div>
+        
+        <h3>الطلبات الجديدة</h3>
+        <div id="adminOrders" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px; padding: 5px; background: #f5f5f5;"></div>
+        
+        <h3>المخزون</h3>
+        <div id="adminInventory"></div>
+    </div>
+
+    <div id="cartDrawer" class="drawer">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 id="txt-cart-title" style="margin:0;">MY BAG</h2>
+            <i class="fa-solid fa-xmark" onclick="closeAll()" style="cursor: pointer;"></i>
+        </div>
+        <div id="cartItems"></div>
+        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 25px;">
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input id="promoInput" placeholder="Promo Code / كود الخصم" style="margin-bottom:0; flex:1;">
+                <button onclick="applyPromo()" class="add-btn" style="width:auto; padding:0 15px; font-size:0.8rem;">APPLY</button>
+            </div>
+            <div id="discountRow" style="display: none; justify-content: space-between; margin-bottom: 10px; color: #ff4d4d; font-weight: bold;">
+                <span>DISCOUNT</span><span id="discountPrice">-0 EGP</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 25px;">
+                <span>TOTAL</span><span id="totalPrice">0 EGP</span>
+            </div>
+            <input id="uName" placeholder="Name"><input id="uPhone" placeholder="WhatsApp"><input id="uAddr" placeholder="Address">
+            <button onclick="checkout()" class="add-btn">PLACE ORDER</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+    <script>
+        const conf = { apiKey: "AIzaSyBlSFh7cRFWz9RsSfPoo9YwpIxeQaazRuQ", databaseURL: "https://perf-4cd3d-default-rtdb.firebaseio.com" };
+        firebase.initializeApp(conf); const db = firebase.database();
+        
+        const OWNER_ID = "DOP-7772v";
+        const NEW_ADMIN = "DOP-777nv";
+        
+        let myId = localStorage.getItem('v_id') || ("DF-" + Math.floor(Math.random()*90000 + 10000));
+        localStorage.setItem('v_id', myId);
+        document.getElementById('myIdDisplay').innerText = "YOUR ID: " + myId;
+
+        // تمت إضافة متغيرات أكواد الخصم
+        let allProducts = [], cart = {}, categories = ["men", "women"], currentLang = 'en', admins = [OWNER_ID, NEW_ADMIN];
+        let promoCodes = {}, cartSubTotal = 0, activePromo = null;
+        let currentQty = 1; 
+        
+        const trans = { 
+            "men": "رجالي", "women": "حريمي", 
+            "for him": "للرجال", "for her": "للسيدات",
+            "all": "الكل" 
+        };
+
+        function load() {
+            db.ref().on('value', snapshot => {
+                const data = snapshot.val() || {};
+                if(data.banner) document.getElementById('heroImg').style.backgroundImage = `url('${data.banner}')`;
+                if(data.admins) admins = Object.values(data.admins); 
+                if(!admins.includes(OWNER_ID)) admins.push(OWNER_ID);
+                if(!admins.includes(NEW_ADMIN)) admins.push(NEW_ADMIN);
+                
+                if(data.categories) categories = Object.values(data.categories).filter(c => typeof c === 'string');
+                
+                // جلب بيانات أكواد الخصم
+                if(data.promos) promoCodes = data.promos; else promoCodes = {};
+
+                allProducts = [];
+                if(data.products) { for(let key in data.products) { allProducts.push({id:key, ...data.products[key]}); } }
+                renderStore(); renderInventory(); renderOrders(data.orders); updateAdminSelect(); renderAdminCategories();
+            });
+        }
+
+        // --- إضافة منطق أكواد الخصم ---
+        function addPromoCode() {
+            const code = document.getElementById('promoCode').value.trim().toUpperCase();
+            const percent = parseFloat(document.getElementById('promoPercent').value);
+            const max = parseFloat(document.getElementById('promoMax').value) || 0;
+            const min = parseFloat(document.getElementById('promoMin').value) || 0;
+
+            if(code && percent > 0) {
+                db.ref('promos/' + code).set({ percent, max, min }).then(() => {
+                    Swal.fire('Done', 'تم إضافة كود الخصم بنجاح', 'success');
+                    document.getElementById('promoCode').value = '';
+                    document.getElementById('promoPercent').value = '';
+                    document.getElementById('promoMax').value = '';
+                    document.getElementById('promoMin').value = '';
+                });
+            } else {
+                Swal.fire('Error', 'يرجى كتابة الكود ونسبة الخصم بشكل صحيح', 'error');
+            }
+        }
+
+        function applyPromo() {
+            const code = document.getElementById('promoInput').value.trim().toUpperCase();
+            if(!code) {
+                activePromo = null;
+                calculateFinalTotal();
+                return;
+            }
+            
+            if(promoCodes[code]) {
+                const promo = promoCodes[code];
+                if(cartSubTotal < promo.min) {
+                    Swal.fire('عذراً', `الحد الأدنى للطلب لتطبيق هذا الكود هو ${promo.min} EGP`, 'warning');
+                    activePromo = null;
+                } else {
+                    activePromo = promo;
+                    Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: currentLang === 'ar' ? 'تم تطبيق الخصم' : 'Promo Applied' });
+                }
+            } else {
+                Swal.fire('عذراً', currentLang === 'ar' ? 'كود الخصم غير صحيح أو منتهي' : 'Invalid promo code', 'error');
+                activePromo = null;
+            }
+            calculateFinalTotal();
+        }
+
+        function calculateFinalTotal() {
+            let finalTotal = cartSubTotal;
+            let discountAmount = 0;
+            
+            if(activePromo) {
+                // إلغاء الخصم تلقائياً إذا قل الإجمالي عن الحد الأدنى بعد حذف منتجات
+                if(cartSubTotal < activePromo.min) {
+                    activePromo = null; 
+                    document.getElementById('promoInput').value = '';
+                } else {
+                    discountAmount = cartSubTotal * (activePromo.percent / 100);
+                    // تطبيق الحد الأقصى للخصم (أعلى سعر)
+                    if(activePromo.max > 0 && discountAmount > activePromo.max) {
+                        discountAmount = activePromo.max;
+                    }
+                    finalTotal -= discountAmount;
+                }
+            }
+            
+            if(discountAmount > 0) {
+                document.getElementById('discountRow').style.display = 'flex';
+                document.getElementById('discountPrice').innerText = `-${discountAmount.toFixed(0)} EGP`;
+            } else {
+                document.getElementById('discountRow').style.display = 'none';
+            }
+            
+            document.getElementById('totalPrice').innerText = finalTotal.toFixed(0) + " EGP";
+        }
+        // -------------------------------
+
+        function renderStore() {
+            const container = document.getElementById('sectionsDisplay'); container.innerHTML = '';
+            categories.forEach(cat => {
+                const filtered = allProducts.filter(p => p.category === cat);
+                if(filtered.length > 0) {
+                    let displayTitle = cat.toUpperCase();
+                    if (cat.toLowerCase() === 'men') displayTitle = "FOR HIM";
+                    if (cat.toLowerCase() === 'women') displayTitle = "FOR HER";
+                    
+                    if(currentLang === 'ar') {
+                        if(cat.toLowerCase() === 'men') displayTitle = trans["for him"];
+                        else if(cat.toLowerCase() === 'women') displayTitle = trans["for her"];
+                        else displayTitle = trans[cat.toLowerCase()] || cat.toUpperCase();
+                    }
+
+                    container.innerHTML += `<div class="section-title">ـ ${displayTitle} ـ</div><div class="items-grid" id="grid-${cat}"></div>`;
+                    filtered.forEach(p => { 
+                        document.getElementById(`grid-${cat}`).innerHTML += `
+                        <div class="card" onclick="openDetail('${p.id}')">
+                            <img src="${p.i}">
+                            <div class="card-info">
+                                <b>${p.n}</b>
+                                <span>${p.p} EGP</span>
+                            </div>
+                        </div>`; 
+                    });
+                }
+            });
+        }
+
+        function renderAdminCategories() {
+            const container = document.getElementById('adminCats');
+            container.innerHTML = '';
+            categories.forEach((cat, index) => {
+                container.innerHTML += `
+                <div class="cat-tag">
+                    ${cat} 
+                    <i class="fa-solid fa-circle-xmark" onclick="removeSection(${index})"></i>
+                </div>`;
+            });
+        }
+
+        function addNewSection() { 
+            const val = document.getElementById('newSecName').value.trim().toLowerCase(); 
+            if(val && !categories.includes(val)) { 
+                categories.push(val); 
+                db.ref('categories').set(categories).then(() => {
+                    document.getElementById('newSecName').value = '';
+                });
+            } 
+        }
+
+        function removeSection(index) {
+            Swal.fire({
+                title: 'هل تريد حذف هذا القسم؟',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، احذف'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    categories.splice(index, 1);
+                    db.ref('categories').set(categories);
+                }
+            });
+        }
+
+        function updateAdminSelect() { 
+            const sel = document.getElementById('pCat'); 
+            if(sel) { 
+                sel.innerHTML = ''; 
+                categories.forEach(c => { sel.innerHTML += `<option value="${c}">${c.toUpperCase()}</option>`; }); 
+            } 
+        }
+
+        function renderInventory() {
+            const inv = document.getElementById('adminInventory'); inv.innerHTML = '';
+            allProducts.forEach(p => {
+                let options = '';
+                categories.forEach(cat => {
+                    options += `<option value="${cat}" ${p.category === cat ? 'selected' : ''}>${cat.toUpperCase()}</option>`;
+                });
+
+                inv.innerHTML += `
+                <div class="inv-row">
+                    <b>${p.n}</b>
+                    <div class="inv-controls">
+                        <select class="inv-select" onchange="changeProductCat('${p.id}', this.value)">
+                            ${options}
+                        </select>
+                        <i class="fa-solid fa-trash" style="color:red; cursor:pointer;" onclick="db.ref('products/${p.id}').remove()"></i>
+                    </div>
+                </div>`;
+            });
+        }
+
+        function changeProductCat(productId, newCat) {
+            db.ref(`products/${productId}`).update({ category: newCat }).then(() => {
+                Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1000 }).fire({ icon: 'success', title: 'Updated' });
+            });
+        }
+
+        function changeQty(val) {
+            currentQty += val;
+            if(currentQty < 1) currentQty = 1;
+            document.getElementById('qtyValue').innerText = currentQty;
+        }
+
+        function addToCart(id, n, p) {
+            let q = currentQty; 
+            if(cart[id]) cart[id].q += q; else cart[id] = {n, p, q};
+            updateCartUI();
+            Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: currentLang === 'ar' ? 'تمت الإضافة' : 'Added' });
+        }
+
+        function removeFromCart(id) {
+            if(cart[id]) {
+                cart[id].q -= 1;
+                if(cart[id].q <= 0) delete cart[id];
+                updateCartUI();
+            }
+        }
+
+        function updateCartUI() {
+            let total = 0, count = 0;
+            const itemsCont = document.getElementById('cartItems');
+            itemsCont.innerHTML = '';
+            
+            for(let id in cart) {
+                total += (cart[id].p * cart[id].q);
+                count += cart[id].q;
+                itemsCont.innerHTML += `
+                    <div class="cart-item">
+                        <div class="cart-item-info">
+                            <b>${cart[id].n} (x${cart[id].q})</b>
+                            <span>${cart[id].p * cart[id].q} EGP</span>
+                        </div>
+                        <i class="fa-solid fa-trash-can remove-cart-btn" onclick="removeFromCart('${id}')"></i>
+                    </div>`;
+            }
+            
+            // تحديث الإجمالي الكلي للخصومات
+            cartSubTotal = total;
+            calculateFinalTotal();
+
+            document.getElementById('badge').innerText = count;
+            document.getElementById('badge').style.display = count > 0 ? 'block' : 'none';
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ar' : 'en';
+            document.getElementById('htmlTag').dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+            document.getElementById('langText').innerText = currentLang === 'ar' ? 'English' : 'العربية';
+            renderStore();
+        }
+
+        function checkAdmin() {
+            if(admins.includes(myId)) {
+                document.getElementById('adminDrawer').classList.add('active');
+                document.getElementById('overlay').style.display='block';
+            } else { Swal.fire('Error', 'ID: ' + myId, 'error'); }
+        }
+
+        function makeNewAdmin() {
+            const targetID = document.getElementById('adminNewID').value.trim();
+            if(targetID) db.ref('admins').push(targetID).then(() => { Swal.fire('Done','','success'); });
+        }
+
+        function updateBanner() {
+            const link = document.getElementById('newBanner').value.trim();
+            if(link) db.ref('banner').set(link).then(() => { Swal.fire('Done','','success'); });
+        }
+
+        function addProduct() { 
+            const n=document.getElementById('pName').value, s=document.getElementById('pSim').value, p=document.getElementById('pPrice').value, i=document.getElementById('pImg').value, category=document.getElementById('pCat').value; 
+            if(n && p && i && category) db.ref('products').push({n, s, p, i, category}).then(() => { Swal.fire('Done','','success'); }); 
+        }
+
+        function openDetail(id) {
+            const p = allProducts.find(x => x.id === id); if(!p) return;
+            currentQty = 1; 
+            document.getElementById('qtyValue').innerText = currentQty;
+            
+            document.getElementById('detName').innerText = p.n;
+            document.getElementById('detPrice').innerText = p.p + " EGP";
+            document.getElementById('detImg').src = p.i;
+            document.getElementById('detSim').innerText = p.s || "";
+            document.getElementById('addMainBtn').onclick = () => addToCart(p.id, p.n, p.p);
+            document.getElementById('bigModal').style.top = '0';
+        }
+
+        function closeDetail() { document.getElementById('bigModal').style.top = '100%'; }
+        function toggleCart() { document.getElementById('cartDrawer').classList.add('active'); document.getElementById('overlay').style.display='block'; }
+        function closeAll() { document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('active')); document.getElementById('overlay').style.display='none'; }
+        
+        function renderOrders(ordersData) {
+            const list = document.getElementById('adminOrders'); list.innerHTML = '';
+            if(!ordersData) return;
+            for(let key in ordersData) {
+                const o = ordersData[key];
+                if(o.status === 'pending') {
+                    list.innerHTML += `
+                        <div class="admin-order-card">
+                            <div><b>الاسم:</b> ${o.u}</div>
+                            <div><b>الواتساب:</b> ${o.ph}</div>
+                            <div><b>العنوان:</b> ${o.ad}</div>
+                            <div><b>الإجمالي:</b> ${o.total}</div>
+                            <button class="order-done-btn" onclick="db.ref('orders/${key}').update({status:'done'})">تم التوصيل</button>
+                        </div>`;
+                }
+            }
+        }
+
+        function checkout() {
+            const u=document.getElementById('uName').value, ph=document.getElementById('uPhone').value, ad=document.getElementById('uAddr').value;
+            if(!u || !ph || !ad) return Swal.fire('Error', 'Missing Data','error');
+            
+            // سيتم إرسال الإجمالي متضمناً الخصم لأنه يُقرأ مباشرة من totalPrice
+            db.ref('orders').push({ u, ph, ad, items:cart, total:document.getElementById('totalPrice').innerText, status:'pending' });
+            
+            cart={}; 
+            activePromo = null;
+            document.getElementById('promoInput').value = '';
+            updateCartUI(); 
+            closeAll(); 
+            Swal.fire('Success', 'Order Sent','success');
+        }
+
+        load();
+    </script>
+</body>
+</html>
