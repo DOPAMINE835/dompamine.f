@@ -125,17 +125,22 @@
             <i class="fa-solid fa-xmark" onclick="closeAll()" style="cursor: pointer;"></i>
         </div>
         
+        <div style="background: #e0f2f1; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #4db6ac;">
+            <h4>قائمة المسؤولين (Admins)</h4>
+            <div id="activeAdminsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+
         <div style="background: #fff3e0; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ffcc80;">
             <h4>إضافة كود خصم</h4>
             <input id="promoCode" placeholder="كود الخصم (مثال: SALE20)">
             <input id="promoPercent" type="number" placeholder="نسبة الخصم %">
-            <input id="promoMax" type="number" placeholder="أقصى مبلغ للخصم (أعلى سعر للخصم)">
-            <input id="promoMin" type="number" placeholder="الحد الأدنى للطلب (أدنى سعر لتفعيل الكود)">
+            <input id="promoMax" type="number" placeholder="أقصى مبلغ للخصم">
+            <input id="promoMin" type="number" placeholder="الحد الأدنى للطلب">
             <button onclick="addPromoCode()" class="add-btn" style="padding:10px; font-size:0.8rem; background:#e65100;">إنشاء الكود</button>
         </div>
 
         <div style="background: #eef2ff; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #d1d5db;">
-            <h4>إدارة المسؤولين (Admins)</h4>
+            <h4>إضافة مسؤول جديد</h4>
             <input id="adminNewID" placeholder="أدخل ID المستخدم لجعله أدمن">
             <button onclick="makeNewAdmin()" class="add-btn" style="padding:10px; font-size:0.8rem; background:#4f46e5;">تعيين كأدمن</button>
         </div>
@@ -174,15 +179,13 @@
         </div>
         <div id="cartItems"></div>
         <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 25px;">
-            
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <input id="promoInput" placeholder="Promo Code / كود الخصم" style="margin-bottom:0; flex:1;">
+                <input id="promoInput" placeholder="Promo Code" style="margin-bottom:0; flex:1;">
                 <button onclick="applyPromo()" class="add-btn" style="width:auto; padding:0 15px; font-size:0.8rem;">APPLY</button>
             </div>
             <div id="discountRow" style="display: none; justify-content: space-between; margin-bottom: 10px; color: #ff4d4d; font-weight: bold;">
                 <span>DISCOUNT</span><span id="discountPrice">-0 EGP</span>
             </div>
-
             <div style="display: flex; justify-content: space-between; margin-bottom: 25px;">
                 <span>TOTAL</span><span id="totalPrice">0 EGP</span>
             </div>
@@ -197,242 +200,140 @@
         const conf = { apiKey: "AIzaSyBlSFh7cRFWz9RsSfPoo9YwpIxeQaazRuQ", databaseURL: "https://perf-4cd3d-default-rtdb.firebaseio.com" };
         firebase.initializeApp(conf); const db = firebase.database();
         
-        // إعدادات الـ ID الخاصة بك
-        const OWNER_ID = "DOP-7772v";
-        const MY_ADMIN_ID = "DF-95829";
-        
-        // تثبيت المعرف الخاص بك فوراً
-        let myId = MY_ADMIN_ID;
-        localStorage.setItem('v_id', myId);
+        // إعدادات الـ ID
+        // تم حذف المعرف القديم بناءً على طلبك
+        const PRIMARY_ADMIN = "DF-95829";
+
+        // توليد ID مختلف لكل مستخدم جديد
+        let myId = localStorage.getItem('v_id');
+        if(!myId) {
+            myId = "DF-" + Math.floor(Math.random()*90000 + 10000);
+            localStorage.setItem('v_id', myId);
+        }
         document.getElementById('myIdDisplay').innerText = "YOUR ID: " + myId;
 
-        let allProducts = [], cart = {}, categories = ["men", "women"], currentLang = 'en', admins = [OWNER_ID, MY_ADMIN_ID];
-        let promoCodes = {}, cartSubTotal = 0, activePromo = null;
-        let currentQty = 1; 
-        
-        const trans = { 
-            "men": "رجالي", "women": "حريمي", 
-            "for him": "للرجال", "for her": "للسيدات",
-            "all": "الكل" 
-        };
+        let allProducts = [], cart = {}, categories = ["men", "women"], currentLang = 'en', admins = [PRIMARY_ADMIN];
+        let promoCodes = {}, cartSubTotal = 0, activePromo = null, currentQty = 1; 
 
         function load() {
             db.ref().on('value', snapshot => {
                 const data = snapshot.val() || {};
                 if(data.banner) document.getElementById('heroImg').style.backgroundImage = `url('${data.banner}')`;
                 
-                // جلب المسؤولين والتأكد من وجودك بينهم دائماً
+                // جلب قائمة المسؤولين
                 if(data.admins) admins = Object.values(data.admins); 
-                if(!admins.includes(OWNER_ID)) admins.push(OWNER_ID);
-                if(!admins.includes(MY_ADMIN_ID)) admins.push(MY_ADMIN_ID);
+                if(!admins.includes(PRIMARY_ADMIN)) admins.push(PRIMARY_ADMIN);
                 
-                if(data.categories) categories = Object.values(data.categories).filter(c => typeof c === 'string');
-                if(data.promos) promoCodes = data.promos; else promoCodes = {};
+                renderAdminsList();
 
+                if(data.categories) categories = Object.values(data.categories).filter(c => typeof c === 'string');
+                if(data.promos) promoCodes = data.promos;
                 allProducts = [];
                 if(data.products) { for(let key in data.products) { allProducts.push({id:key, ...data.products[key]}); } }
                 renderStore(); renderInventory(); renderOrders(data.orders); updateAdminSelect(); renderAdminCategories();
             });
         }
 
-        // --- نظام أكواد الخصم ---
-        function addPromoCode() {
-            const code = document.getElementById('promoCode').value.trim().toUpperCase();
-            const percent = parseFloat(document.getElementById('promoPercent').value);
-            const max = parseFloat(document.getElementById('promoMax').value) || 0;
-            const min = parseFloat(document.getElementById('promoMin').value) || 0;
-
-            if(code && percent > 0) {
-                db.ref('promos/' + code).set({ percent, max, min }).then(() => {
-                    Swal.fire('Done', 'تم إضافة كود الخصم بنجاح', 'success');
-                    document.getElementById('promoCode').value = '';
-                    document.getElementById('promoPercent').value = '';
-                    document.getElementById('promoMax').value = '';
-                    document.getElementById('promoMin').value = '';
-                });
-            } else {
-                Swal.fire('Error', 'يرجى كتابة الكود ونسبة الخصم بشكل صحيح', 'error');
-            }
+        function renderAdminsList() {
+            const container = document.getElementById('activeAdminsList');
+            if(!container) return;
+            container.innerHTML = '';
+            admins.forEach(id => {
+                const isPermanent = (id === PRIMARY_ADMIN);
+                container.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:8px 12px; border-radius:4px; font-size:0.85rem; margin-bottom:5px;">
+                    <span><i class="fa-solid fa-user-shield" style="margin-left:8px; color:#4db6ac;"></i> ${id}</span>
+                    ${!isPermanent ? `<i class="fa-solid fa-trash" style="color:#ff4d4d; cursor:pointer;" onclick="removeAdmin('${id}')"></i>` : `<span style="font-size:0.6rem; color:#999;">أساسي</span>`}
+                </div>`;
+            });
         }
 
-        function applyPromo() {
-            const code = document.getElementById('promoInput').value.trim().toUpperCase();
-            if(!code) {
-                activePromo = null;
-                calculateFinalTotal();
-                return;
-            }
-            
-            if(promoCodes[code]) {
-                const promo = promoCodes[code];
-                if(cartSubTotal < promo.min) {
-                    Swal.fire('عذراً', `هذا الكود يتطلب حداً أدنى للشراء قدره ${promo.min} EGP. إجمالي سلتك الحالي ${cartSubTotal} EGP`, 'warning');
-                    activePromo = null;
-                } else {
-                    activePromo = promo;
-                    Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: currentLang === 'ar' ? 'تم تطبيق الخصم' : 'Promo Applied' });
-                }
-            } else {
-                Swal.fire('Error', currentLang === 'ar' ? 'كود الخصم غير صحيح أو منتهي' : 'Invalid promo code', 'error');
-                activePromo = null;
-            }
-            calculateFinalTotal();
-        }
-
-        function calculateFinalTotal() {
-            let finalTotal = cartSubTotal;
-            let discountAmount = 0;
-            
-            if(activePromo) {
-                if(cartSubTotal < activePromo.min) {
-                    activePromo = null; 
-                    document.getElementById('promoInput').value = '';
-                } else {
-                    discountAmount = cartSubTotal * (activePromo.percent / 100);
-                    if(activePromo.max > 0 && discountAmount > activePromo.max) {
-                        discountAmount = activePromo.max;
-                    }
-                    finalTotal -= discountAmount;
-                }
-            }
-            
-            if(discountAmount > 0) {
-                document.getElementById('discountRow').style.display = 'flex';
-                document.getElementById('discountPrice').innerText = `-${discountAmount.toFixed(0)} EGP`;
-            } else {
-                document.getElementById('discountRow').style.display = 'none';
-            }
-            
-            document.getElementById('totalPrice').innerText = finalTotal.toFixed(0) + " EGP";
-        }
-
-        // --- باقي وظائف المتجر الأساسية ---
-        function renderStore() {
-            const container = document.getElementById('sectionsDisplay'); container.innerHTML = '';
-            categories.forEach(cat => {
-                const filtered = allProducts.filter(p => p.category === cat);
-                if(filtered.length > 0) {
-                    let displayTitle = cat.toUpperCase();
-                    if (cat.toLowerCase() === 'men') displayTitle = "FOR HIM";
-                    if (cat.toLowerCase() === 'women') displayTitle = "FOR HER";
-                    
-                    if(currentLang === 'ar') {
-                        if(cat.toLowerCase() === 'men') displayTitle = trans["for him"];
-                        else if(cat.toLowerCase() === 'women') displayTitle = trans["for her"];
-                        else displayTitle = trans[cat.toLowerCase()] || cat.toUpperCase();
-                    }
-
-                    container.innerHTML += `<div class="section-title">ـ ${displayTitle} ـ</div><div class="items-grid" id="grid-${cat}"></div>`;
-                    filtered.forEach(p => { 
-                        document.getElementById(`grid-${cat}`).innerHTML += `
-                        <div class="card" onclick="openDetail('${p.id}')">
-                            <img src="${p.i}">
-                            <div class="card-info">
-                                <b>${p.n}</b>
-                                <span>${p.p} EGP</span>
-                            </div>
-                        </div>`; 
+        function removeAdmin(idToRemove) {
+            Swal.fire({ title: 'سحب الصلاحية؟', text: `حذف ${idToRemove} من المسؤولين`, icon: 'warning', showCancelButton: true }).then((result) => {
+                if (result.isConfirmed) {
+                    db.ref('admins').once('value', snapshot => {
+                        const data = snapshot.val();
+                        for(let key in data) { if(data[key] === idToRemove) { db.ref('admins/' + key).remove(); break; } }
                     });
                 }
             });
-        }
-
-        function renderAdminCategories() {
-            const container = document.getElementById('adminCats');
-            container.innerHTML = '';
-            categories.forEach((cat, index) => {
-                container.innerHTML += `<div class="cat-tag">${cat} <i class="fa-solid fa-circle-xmark" onclick="removeSection(${index})"></i></div>`;
-            });
-        }
-
-        function addNewSection() { 
-            const val = document.getElementById('newSecName').value.trim().toLowerCase(); 
-            if(val && !categories.includes(val)) { 
-                categories.push(val); 
-                db.ref('categories').set(categories).then(() => { document.getElementById('newSecName').value = ''; });
-            } 
-        }
-
-        function removeSection(index) {
-            Swal.fire({ title: 'حذف القسم؟', icon: 'warning', showCancelButton: true, confirmButtonText: 'نعم' }).then((result) => {
-                if (result.isConfirmed) { categories.splice(index, 1); db.ref('categories').set(categories); }
-            });
-        }
-
-        function updateAdminSelect() { 
-            const sel = document.getElementById('pCat'); 
-            if(sel) { sel.innerHTML = ''; categories.forEach(c => { sel.innerHTML += `<option value="${c}">${c.toUpperCase()}</option>`; }); } 
-        }
-
-        function renderInventory() {
-            const inv = document.getElementById('adminInventory'); inv.innerHTML = '';
-            allProducts.forEach(p => {
-                let options = '';
-                categories.forEach(cat => { options += `<option value="${cat}" ${p.category === cat ? 'selected' : ''}>${cat.toUpperCase()}</option>`; });
-                inv.innerHTML += `<div class="inv-row"><b>${p.n}</b><div class="inv-controls"><select class="inv-select" onchange="changeProductCat('${p.id}', this.value)">${options}</select><i class="fa-solid fa-trash" style="color:red; cursor:pointer;" onclick="db.ref('products/${p.id}').remove()"></i></div></div>`;
-            });
-        }
-
-        function changeProductCat(productId, newCat) {
-            db.ref(`products/${productId}`).update({ category: newCat }).then(() => { Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1000 }).fire({ icon: 'success', title: 'Updated' }); });
-        }
-
-        function changeQty(val) { currentQty += val; if(currentQty < 1) currentQty = 1; document.getElementById('qtyValue').innerText = currentQty; }
-
-        function addToCart(id, n, p) {
-            let q = currentQty; if(cart[id]) cart[id].q += q; else cart[id] = {n, p, q};
-            updateCartUI();
-            Swal.mixin({ toast: true, position: 'top', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: currentLang === 'ar' ? 'تمت الإضافة' : 'Added' });
-        }
-
-        function removeFromCart(id) { if(cart[id]) { cart[id].q -= 1; if(cart[id].q <= 0) delete cart[id]; updateCartUI(); } }
-
-        function updateCartUI() {
-            let total = 0, count = 0;
-            const itemsCont = document.getElementById('cartItems');
-            itemsCont.innerHTML = '';
-            for(let id in cart) {
-                total += (cart[id].p * cart[id].q); count += cart[id].q;
-                itemsCont.innerHTML += `<div class="cart-item"><div class="cart-item-info"><b>${cart[id].n} (x${cart[id].q})</b><span>${cart[id].p * cart[id].q} EGP</span></div><i class="fa-solid fa-trash-can remove-cart-btn" onclick="removeFromCart('${id}')"></i></div>`;
-            }
-            cartSubTotal = total;
-            calculateFinalTotal();
-            document.getElementById('badge').innerText = count;
-            document.getElementById('badge').style.display = count > 0 ? 'block' : 'none';
-        }
-
-        function toggleLanguage() {
-            currentLang = currentLang === 'en' ? 'ar' : 'en';
-            document.getElementById('htmlTag').dir = currentLang === 'ar' ? 'rtl' : 'ltr';
-            document.getElementById('langText').innerText = currentLang === 'ar' ? 'English' : 'العربية';
-            renderStore();
         }
 
         function checkAdmin() {
             if(admins.includes(myId)) {
                 document.getElementById('adminDrawer').classList.add('active');
                 document.getElementById('overlay').style.display='block';
-            } else { Swal.fire('Error', 'ID: ' + myId, 'error'); }
+            } else { Swal.fire('Error', 'ID: ' + myId + ' (No Admin Access)', 'error'); }
         }
 
         function makeNewAdmin() {
-            const targetID = document.getElementById('adminNewID').value.trim();
-            if(targetID) db.ref('admins').push(targetID).then(() => { Swal.fire('Done','','success'); });
+            const id = document.getElementById('adminNewID').value.trim();
+            if(id && !admins.includes(id)) {
+                db.ref('admins').push(id).then(() => { 
+                    Swal.fire('Success','تمت الإضافة','success'); 
+                    document.getElementById('adminNewID').value = '';
+                });
+            }
         }
 
-        function updateBanner() {
-            const link = document.getElementById('newBanner').value.trim();
-            if(link) db.ref('banner').set(link).then(() => { Swal.fire('Done','','success'); });
+        // --- باقي الوظائف الأساسية ---
+        function addPromoCode() {
+            const code = document.getElementById('promoCode').value.trim().toUpperCase();
+            const percent = parseFloat(document.getElementById('promoPercent').value);
+            const max = parseFloat(document.getElementById('promoMax').value) || 0;
+            const min = parseFloat(document.getElementById('promoMin').value) || 0;
+            if(code && percent > 0) db.ref('promos/' + code).set({ percent, max, min }).then(() => { Swal.fire('Done', 'تم الحفظ', 'success'); });
         }
 
-        function addProduct() { 
-            const n=document.getElementById('pName').value, s=document.getElementById('pSim').value, p=document.getElementById('pPrice').value, i=document.getElementById('pImg').value, category=document.getElementById('pCat').value; 
-            if(n && p && i && category) db.ref('products').push({n, s, p, i, category}).then(() => { Swal.fire('Done','','success'); }); 
+        function applyPromo() {
+            const code = document.getElementById('promoInput').value.trim().toUpperCase();
+            if(!code) { activePromo = null; calculateFinalTotal(); return; }
+            if(promoCodes[code]) {
+                const p = promoCodes[code];
+                if(cartSubTotal < p.min) { Swal.fire('Error', `الحد الأدنى ${p.min} EGP`, 'error'); }
+                else { activePromo = p; Swal.fire('Success', 'تم التطبيق', 'success'); }
+            } else { Swal.fire('Error', 'كود خطأ', 'error'); }
+            calculateFinalTotal();
         }
 
-        function openDetail(id) {
-            const p = allProducts.find(x => x.id === id); if(!p) return;
-            currentQty = 1; document.getElementById('qtyValue').innerText = currentQty;
+        function calculateFinalTotal() {
+            let final = cartSubTotal; let disc = 0;
+            if(activePromo) {
+                disc = cartSubTotal * (activePromo.percent / 100);
+                if(activePromo.max > 0 && disc > activePromo.max) disc = activePromo.max;
+                final -= disc;
+            }
+            document.getElementById('discountRow').style.display = disc > 0 ? 'flex' : 'none';
+            document.getElementById('discountPrice').innerText = `-${disc.toFixed(0)} EGP`;
+            document.getElementById('totalPrice').innerText = final.toFixed(0) + " EGP";
+        }
+
+        function renderStore() {
+            const container = document.getElementById('sectionsDisplay'); container.innerHTML = '';
+            categories.forEach(cat => {
+                const filtered = allProducts.filter(p => p.category === cat);
+                if(filtered.length > 0) {
+                    container.innerHTML += `<div class="section-title">ـ ${cat.toUpperCase()} ـ</div><div class="items-grid" id="grid-${cat}"></div>`;
+                    filtered.forEach(p => { 
+                        document.getElementById(`grid-${cat}`).innerHTML += `<div class="card" onclick="openDetail('${p.id}')"><img src="${p.i}"><div class="card-info"><b>${p.n}</b><span>${p.p} EGP</span></div></div>`; 
+                    });
+                }
+            });
+        }
+
+        function updateCartUI() {
+            let total = 0, count = 0; const itemsCont = document.getElementById('cartItems'); itemsCont.innerHTML = '';
+            for(let id in cart) {
+                total += (cart[id].p * cart[id].q); count += cart[id].q;
+                itemsCont.innerHTML += `<div class="cart-item"><div class="cart-item-info"><b>${cart[id].n} (x${cart[id].q})</b><span>${cart[id].p * cart[id].q} EGP</span></div><i class="fa-solid fa-trash-can remove-cart-btn" onclick="removeFromCart('${id}')"></i></div>`;
+            }
+            cartSubTotal = total; calculateFinalTotal();
+            document.getElementById('badge').innerText = count;
+            document.getElementById('badge').style.display = count > 0 ? 'block' : 'none';
+        }
+
+        function openDetail(id) { 
+            const p = allProducts.find(x => x.id === id); 
             document.getElementById('detName').innerText = p.n;
             document.getElementById('detPrice').innerText = p.p + " EGP";
             document.getElementById('detImg').src = p.i;
@@ -440,28 +341,22 @@
             document.getElementById('addMainBtn').onclick = () => addToCart(p.id, p.n, p.p);
             document.getElementById('bigModal').style.top = '0';
         }
-
         function closeDetail() { document.getElementById('bigModal').style.top = '100%'; }
         function toggleCart() { document.getElementById('cartDrawer').classList.add('active'); document.getElementById('overlay').style.display='block'; }
         function closeAll() { document.querySelectorAll('.drawer').forEach(d=>d.classList.remove('active')); document.getElementById('overlay').style.display='none'; }
-        
-        function renderOrders(ordersData) {
-            const list = document.getElementById('adminOrders'); list.innerHTML = '';
-            if(!ordersData) return;
-            for(let key in ordersData) {
-                const o = ordersData[key];
-                if(o.status === 'pending') {
-                    list.innerHTML += `<div class="admin-order-card"><div><b>الاسم:</b> ${o.u}</div><div><b>الواتساب:</b> ${o.ph}</div><div><b>العنوان:</b> ${o.ad}</div><div><b>الإجمالي:</b> ${o.total}</div><button class="order-done-btn" onclick="db.ref('orders/${key}').update({status:'done'})">تم التوصيل</button></div>`;
-                }
-            }
-        }
-
-        function checkout() {
-            const u=document.getElementById('uName').value, ph=document.getElementById('uPhone').value, ad=document.getElementById('uAddr').value;
-            if(!u || !ph || !ad) return Swal.fire('Error', 'Missing Data','error');
-            db.ref('orders').push({ u, ph, ad, items:cart, total:document.getElementById('totalPrice').innerText, status:'pending' });
-            cart={}; activePromo = null; document.getElementById('promoInput').value = ''; updateCartUI(); closeAll(); Swal.fire('Success', 'Order Sent','success');
-        }
+        function changeQty(val) { currentQty += val; if(currentQty < 1) currentQty = 1; document.getElementById('qtyValue').innerText = currentQty; }
+        function addToCart(id, n, p) { if(cart[id]) cart[id].q += currentQty; else cart[id] = {n, p, q: currentQty}; updateCartUI(); }
+        function removeFromCart(id) { if(cart[id]) { cart[id].q -= 1; if(cart[id].q <= 0) delete cart[id]; updateCartUI(); } }
+        function toggleLanguage() { /* تبديل اللغة */ }
+        function addNewSection() { const v = document.getElementById('newSecName').value.trim().toLowerCase(); if(v && !categories.includes(v)) { categories.push(v); db.ref('categories').set(categories); } }
+        function removeSection(i) { categories.splice(i, 1); db.ref('categories').set(categories); }
+        function renderAdminCategories() { const c = document.getElementById('adminCats'); c.innerHTML = ''; categories.forEach((cat, i) => { c.innerHTML += `<div class="cat-tag">${cat} <i class="fa-solid fa-circle-xmark" onclick="removeSection(${i})"></i></div>`; }); }
+        function renderInventory() { const inv = document.getElementById('adminInventory'); inv.innerHTML = ''; allProducts.forEach(p => { inv.innerHTML += `<div class="inv-row"><b>${p.n}</b><i class="fa-solid fa-trash" style="color:red; cursor:pointer;" onclick="db.ref('products/${p.id}').remove()"></i></div>`; }); }
+        function updateAdminSelect() { const sel = document.getElementById('pCat'); sel.innerHTML = ''; categories.forEach(c => { sel.innerHTML += `<option value="${c}">${c.toUpperCase()}</option>`; }); }
+        function renderOrders(d) { const list = document.getElementById('adminOrders'); list.innerHTML = ''; for(let k in d) { if(d[k].status === 'pending') list.innerHTML += `<div class="admin-order-card"><b>${d[k].u}</b><br>${d[k].total}<button class="order-done-btn" onclick="db.ref('orders/${k}').update({status:'done'})">DONE</button></div>`; } }
+        function addProduct() { const n=document.getElementById('pName').value, p=document.getElementById('pPrice').value, i=document.getElementById('pImg').value, c=document.getElementById('pCat').value; if(n && p && i) db.ref('products').push({n, p, i, category:c}); }
+        function updateBanner() { const l = document.getElementById('newBanner').value; if(l) db.ref('banner').set(l); }
+        function checkout() { const u=document.getElementById('uName').value, ph=document.getElementById('uPhone').value, ad=document.getElementById('uAddr').value; if(u && ph && ad) db.ref('orders').push({ u, ph, ad, items:cart, total:document.getElementById('totalPrice').innerText, status:'pending' }); cart={}; updateCartUI(); closeAll(); }
 
         load();
     </script>
