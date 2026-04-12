@@ -200,10 +200,10 @@
         const conf = { apiKey: "AIzaSyBlSFh7cRFWz9RsSfPoo9YwpIxeQaazRuQ", databaseURL: "https://perf-4cd3d-default-rtdb.firebaseio.com" };
         firebase.initializeApp(conf); const db = firebase.database();
         
-        // المعرف الأساسي الخاص بك فقط
+        // المعرف الأساسي
         const PRIMARY_ADMIN = "DF-95829";
 
-        // توليد ID للعملاء العاديين والاحتفاظ به
+        // توليد ID للعملاء
         let myId = localStorage.getItem('v_id');
         if(!myId) {
             myId = "DF-" + Math.floor(Math.random()*90000 + 10000);
@@ -219,7 +219,6 @@
                 const data = snapshot.val() || {};
                 if(data.banner) document.getElementById('heroImg').style.backgroundImage = `url('${data.banner}')`;
                 
-                // جلب قائمة المسؤولين مع التأكد من وجودك فيها دائمًا
                 if(data.admins) admins = Object.values(data.admins); 
                 if(!admins.includes(PRIMARY_ADMIN)) admins.push(PRIMARY_ADMIN);
                 
@@ -233,19 +232,18 @@
                 
                 renderStore(); 
                 renderInventory(); 
-                renderOrders(data.orders); // هنا يتم إرسال الطلبات لدالة العرض
+                renderOrders(data.orders); // استدعاء عرض الطلبات بشكل صحيح
                 updateAdminSelect(); 
                 renderAdminCategories();
             });
         }
 
-        // إرجاع دالة عرض الطلبات لشكلها الكامل حتى لا يحدث خطأ
+        // --- دالة عرض الطلبات (بكامل تفاصيلها: الاسم، الواتساب، العنوان) ---
         function renderOrders(ordersData) {
             const list = document.getElementById('adminOrders');
             if(!list) return;
             list.innerHTML = '';
             
-            // في حال عدم وجود طلبات في قاعدة البيانات
             if(!ordersData) {
                 list.innerHTML = '<p style="text-align:center; color:#666;">لا توجد طلبات جديدة</p>';
                 return;
@@ -254,6 +252,7 @@
             for(let key in ordersData) {
                 const o = ordersData[key];
                 if(o.status === 'pending') {
+                    // إظهار كافة تفاصيل الطلب من قاعدة البيانات
                     list.innerHTML += `
                         <div class="admin-order-card">
                             <div><b>الاسم:</b> ${o.u}</div>
@@ -266,14 +265,14 @@
             }
         }
 
-        // إرجاع دالة الدفع (إرسال الطلب) لشكلها السليم والتأكد من حفظها
+        // --- دالة إرسال الطلب (التأكد من حفظ الواتساب والعنوان) ---
         function checkout() {
-            const u = document.getElementById('uName').value;
-            const ph = document.getElementById('uPhone').value;
-            const ad = document.getElementById('uAddr').value;
+            const u = document.getElementById('uName').value.trim();
+            const ph = document.getElementById('uPhone').value.trim();
+            const ad = document.getElementById('uAddr').value.trim();
             
             if(!u || !ph || !ad) {
-                return Swal.fire('Error', 'يرجى إكمال جميع البيانات', 'error');
+                return Swal.fire('Error', 'يرجى إكمال جميع البيانات (الاسم، الواتساب، العنوان)', 'error');
             }
             
             db.ref('orders').push({ 
@@ -293,6 +292,7 @@
             });
         }
 
+        // باقي الدوال (كما هي وبشكل سليم تماماً)
         function renderAdminsList() {
             const container = document.getElementById('activeAdminsList');
             if(!container) return;
