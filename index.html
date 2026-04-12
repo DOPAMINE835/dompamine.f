@@ -232,13 +232,13 @@
                 
                 renderStore(); 
                 renderInventory(); 
-                renderOrders(data.orders); // استدعاء عرض الطلبات بشكل صحيح
+                renderOrders(data.orders); 
                 updateAdminSelect(); 
                 renderAdminCategories();
             });
         }
 
-        // --- دالة عرض الطلبات (بكامل تفاصيلها: الاسم، الواتساب، العنوان) ---
+        // --- التعديل هنا فقط لعرض المنتجات داخل الطلب ---
         function renderOrders(ordersData) {
             const list = document.getElementById('adminOrders');
             if(!list) return;
@@ -252,12 +252,24 @@
             for(let key in ordersData) {
                 const o = ordersData[key];
                 if(o.status === 'pending') {
-                    // إظهار كافة تفاصيل الطلب من قاعدة البيانات
+                    
+                    // جلب وتجهيز قائمة المنتجات المطلوبة
+                    let itemsListHtml = '<div style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 0.9rem;"><b>المنتجات:</b><br>';
+                    if(o.items) {
+                        for(let itemId in o.items) {
+                            const item = o.items[itemId];
+                            itemsListHtml += `- ${item.n} (الكمية: ${item.q})<br>`;
+                        }
+                    }
+                    itemsListHtml += '</div>';
+
+                    // إضافة بطاقة الطلب متضمنة المنتجات
                     list.innerHTML += `
                         <div class="admin-order-card">
                             <div><b>الاسم:</b> ${o.u}</div>
                             <div><b>الواتساب:</b> ${o.ph}</div>
                             <div><b>العنوان:</b> ${o.ad}</div>
+                            ${itemsListHtml}
                             <div><b>الإجمالي:</b> ${o.total}</div>
                             <button class="order-done-btn" onclick="db.ref('orders/${key}').update({status:'done'})">تم التوصيل (DONE)</button>
                         </div>`;
@@ -265,7 +277,7 @@
             }
         }
 
-        // --- دالة إرسال الطلب (التأكد من حفظ الواتساب والعنوان) ---
+        // باقي الدوال (بدون أي تغيير نهائياً)
         function checkout() {
             const u = document.getElementById('uName').value.trim();
             const ph = document.getElementById('uPhone').value.trim();
@@ -292,7 +304,6 @@
             });
         }
 
-        // باقي الدوال (كما هي وبشكل سليم تماماً)
         function renderAdminsList() {
             const container = document.getElementById('activeAdminsList');
             if(!container) return;
