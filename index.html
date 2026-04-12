@@ -201,7 +201,7 @@
         firebase.initializeApp(conf); const db = firebase.database();
         
         // إعدادات الـ ID
-        // تم حذف المعرف القديم بناءً على طلبك
+        const OWNER_ID = "DOP-7772v";
         const PRIMARY_ADMIN = "DF-95829";
 
         // توليد ID مختلف لكل مستخدم جديد
@@ -212,7 +212,7 @@
         }
         document.getElementById('myIdDisplay').innerText = "YOUR ID: " + myId;
 
-        let allProducts = [], cart = {}, categories = ["men", "women"], currentLang = 'en', admins = [PRIMARY_ADMIN];
+        let allProducts = [], cart = {}, categories = ["men", "women"], currentLang = 'en', admins = [OWNER_ID, PRIMARY_ADMIN];
         let promoCodes = {}, cartSubTotal = 0, activePromo = null, currentQty = 1; 
 
         function load() {
@@ -222,6 +222,7 @@
                 
                 // جلب قائمة المسؤولين
                 if(data.admins) admins = Object.values(data.admins); 
+                if(!admins.includes(OWNER_ID)) admins.push(OWNER_ID);
                 if(!admins.includes(PRIMARY_ADMIN)) admins.push(PRIMARY_ADMIN);
                 
                 renderAdminsList();
@@ -239,7 +240,7 @@
             if(!container) return;
             container.innerHTML = '';
             admins.forEach(id => {
-                const isPermanent = (id === PRIMARY_ADMIN);
+                const isPermanent = (id === OWNER_ID || id === PRIMARY_ADMIN);
                 container.innerHTML += `
                 <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:8px 12px; border-radius:4px; font-size:0.85rem; margin-bottom:5px;">
                     <span><i class="fa-solid fa-user-shield" style="margin-left:8px; color:#4db6ac;"></i> ${id}</span>
